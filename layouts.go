@@ -107,7 +107,12 @@ func Glob(patterns ...string) error {
 		if err != nil {
 			return err
 		}
-		files = append(files, matches...)
+		for _, m := range matches {
+			if filepath.Base(m)[0] == '.' {
+				continue
+			}
+			files = append(files, m)
+		}
 	}
 	return Files(files...)
 }
