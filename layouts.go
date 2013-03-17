@@ -23,6 +23,7 @@ type Entry struct {
 }
 
 var tmpls *template.Template
+var funcs template.FuncMap
 var dict map[string]Entry
 var mu sync.Mutex
 
@@ -69,6 +70,7 @@ func load(filename string) error {
 		t.Funcs(template.FuncMap{
 			"content": undefinedContent,
 		})
+		t.Funcs(funcs)
 	} else {
 		t = tmpls.New(name)
 	}
@@ -201,4 +203,18 @@ func ExecuteHTML(w io.Writer, layout string, content template.HTML, data interfa
 	defer mu.Unlock()
 
 	return executeHTML(w, layout, content, data)
+}
+
+func Funcs(f template.FuncMap) {
+	if tmpls != nil {
+		for _, t := range tmpls.Templates() {
+			t.Funcs(f)
+		}
+	}
+	if funcs == nil {
+		funcs = template.FuncMap{}
+	}
+	for k, v := range f {
+		funcs[k] = v
+	}
 }
