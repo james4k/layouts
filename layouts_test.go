@@ -2,9 +2,9 @@ package layouts
 
 import (
 	"bytes"
-	"github.com/james4k/fmatter"
 	"html/template"
 	"io/ioutil"
+	"j4k.co/fmatter"
 	"testing"
 )
 

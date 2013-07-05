@@ -3,10 +3,10 @@ package layouts
 import (
 	"bytes"
 	"errors"
-	"github.com/james4k/fmatter"
 	"html/template"
 	"io"
 	"io/ioutil"
+	"j4k.co/fmatter"
 	"path/filepath"
 	"sync"
 )
