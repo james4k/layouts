@@ -1,3 +1,4 @@
+// DEPRECATED. TOML frontmatter was a terrible idea.
 package layouts
 
 import (
