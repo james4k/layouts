@@ -58,9 +58,11 @@ func New(dir string) *Group {
 
 // SetPath sets a new path for layouts to be loaded from. This should be called
 // before any layouts are loaded.
+/*
 func (g *Group) SetPath(dir string) {
 	g.dir = dir
 }
+*/
 
 func (g *Group) load(filename string) error {
 	front := make(map[string]interface{}, 4)
@@ -103,7 +105,8 @@ func (g *Group) load(filename string) error {
 
 var ErrMissingLayout = errors.New("layouts: missing layout")
 
-// Files loads layouts by individual file names. Each layout's name comes from the file name without its extension.
+// Files loads layouts by individual file names. Each layout's name
+// comes from the file name without its extension.
 func (g *Group) Files(files ...string) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -117,7 +120,8 @@ func (g *Group) Files(files ...string) error {
 	return nil
 }
 
-// Glob loads layouts through pattern matching. Each layout's name comes from the file name without its extension.
+// Glob loads layouts through pattern matching. Each layout's name
+// comes from the file name without its extension.
 func (g *Group) Glob(patterns ...string) error {
 	files := make([]string, 0, 8)
 	for _, pattern := range patterns {
@@ -210,7 +214,8 @@ func (g *Group) executeHTML(w io.Writer, layout string, content template.HTML, d
 	return nil
 }
 
-// Execute renders the specified template using the named layout, passing in data to the layout templates.
+// Execute renders the specified template using the named layout,
+// passing in data to the layout templates.
 func (g *Group) Execute(w io.Writer, layout string, t *template.Template, data interface{}) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -218,7 +223,10 @@ func (g *Group) Execute(w io.Writer, layout string, t *template.Template, data i
 	return g.execute(w, layout, t, data)
 }
 
-// ExecuteHTML renders the content string using the named layout, passing in data to the layout templates. Note that the content string is of type template.HTML; it is expected that the content string is safe, fully-escaped HTML.
+// ExecuteHTML renders the content string using the named layout,
+// passing in data to the layout templates. Note that the content
+// string is of type template.HTML; it is expected that the content
+// string is safe, fully-escaped HTML.
 func (g *Group) ExecuteHTML(w io.Writer, layout string, content template.HTML, data interface{}) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -226,8 +234,8 @@ func (g *Group) ExecuteHTML(w io.Writer, layout string, content template.HTML, d
 	return g.executeHTML(w, layout, content, data)
 }
 
-// Funcs adds funcs to all templates that are executed. See template.Funcs in
-// html/template
+// Funcs adds funcs to all templates that are executed. See
+// template.Funcs in html/template
 func (g *Group) Funcs(f template.FuncMap) {
 	if g.tmpls != nil {
 		for _, t := range g.tmpls.Templates() {
