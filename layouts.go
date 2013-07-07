@@ -22,13 +22,13 @@ type Entry struct {
 	Parent string
 }
 
-var tmpls *template.Template
-var funcs template.FuncMap
-var dict map[string]Entry
-var mu sync.Mutex
-
-func init() {
-	Clear()
+// Group is a collection of template layouts.
+type Group struct {
+	dir   string
+	tmpls *template.Template
+	funcs template.FuncMap
+	dict  map[string]Entry
+	mu    sync.Mutex
 }
 
 func undefinedContent() interface{} {
@@ -47,7 +47,22 @@ func makeContentFunc(content template.HTML) interface{} {
 	}
 }
 
-func load(filename string) error {
+// New returns a group with layouts relative to dir
+func New(dir string) *Group {
+	g := &Group{
+		dir: dir,
+	}
+	g.Clear()
+	return g
+}
+
+// SetPath sets a new path for layouts to be loaded from. This should be called
+// before any layouts are loaded.
+func (g *Group) SetPath(dir string) {
+	g.dir = dir
+}
+
+func (g *Group) load(filename string) error {
 	front := make(map[string]interface{}, 4)
 	content, err := fmatter.ReadFile(filename, front)
 	if err != nil {
@@ -58,21 +73,21 @@ func load(filename string) error {
 	filename = filepath.Base(filename)
 	ext := filepath.Ext(filename)
 	name := filename[:len(filename)-len(ext)]
-	_, ok := dict[name]
+	_, ok := g.dict[name]
 	if ok {
 		return nil
 	}
 
 	var t *template.Template
-	if tmpls == nil {
+	if g.tmpls == nil {
 		t = template.New(name)
-		tmpls = t
+		g.tmpls = t
 		t.Funcs(template.FuncMap{
 			"content": undefinedContent,
 		})
-		t.Funcs(funcs)
+		t.Funcs(g.funcs)
 	} else {
-		t = tmpls.New(name)
+		t = g.tmpls.New(name)
 	}
 
 	_, err = t.Parse(string(content))
@@ -82,18 +97,19 @@ func load(filename string) error {
 	}
 
 	parent, _ := front["layout"].(string)
-	dict[name] = Entry{unexportedEntry{t}, name, path, parent}
+	g.dict[name] = Entry{unexportedEntry{t}, name, path, parent}
 	return nil
 }
 
 var ErrMissingLayout = errors.New("layouts: missing layout")
 
 // Files loads layouts by individual file names. Each layout's name comes from the file name without its extension.
-func Files(files ...string) error {
-	mu.Lock()
-	defer mu.Unlock()
+func (g *Group) Files(files ...string) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
 	for _, f := range files {
-		err := load(f)
+		f = filepath.Join(g.dir, f)
+		err := g.load(f)
 		if err != nil {
 			return err
 		}
@@ -102,43 +118,48 @@ func Files(files ...string) error {
 }
 
 // Glob loads layouts through pattern matching. Each layout's name comes from the file name without its extension.
-func Glob(patterns ...string) error {
+func (g *Group) Glob(patterns ...string) error {
 	files := make([]string, 0, 8)
 	for _, pattern := range patterns {
+		pattern = filepath.Join(g.dir, pattern)
 		matches, err := filepath.Glob(pattern)
 		if err != nil {
 			return err
 		}
 		for _, m := range matches {
+			m, err = filepath.Rel(g.dir, m)
+			if err != nil {
+				return err
+			}
 			if filepath.Base(m)[0] == '.' {
 				continue
 			}
 			files = append(files, m)
 		}
 	}
-	return Files(files...)
+	return g.Files(files...)
 }
 
 // Clear unloads all layouts.
-func Clear() {
-	mu.Lock()
-	defer mu.Unlock()
+func (g *Group) Clear() {
+	g.mu.Lock()
+	defer g.mu.Unlock()
 
-	dict = make(map[string]Entry, 8)
-	tmpls = nil
+	g.dict = make(map[string]Entry)
+	g.tmpls = nil
 }
 
 // Entries returns info about all loaded layouts.
-func Entries() []Entry {
-	list := make([]Entry, 0, len(dict))
-	for _, e := range dict {
+func (g *Group) Entries() []Entry {
+	list := make([]Entry, 0, len(g.dict))
+	for _, e := range g.dict {
 		list = append(list, e)
 	}
 	return list
 }
 
-func execute(w io.Writer, layout string, t *template.Template, data interface{}) error {
-	l, ok := dict[layout]
+func (g *Group) execute(w io.Writer, layout string, t *template.Template, data interface{}) error {
+	l, ok := g.dict[layout]
 	if !ok {
 		return ErrMissingLayout
 	}
@@ -159,7 +180,7 @@ func execute(w io.Writer, layout string, t *template.Template, data interface{})
 	})
 
 	if l.Parent != "" {
-		return execute(w, l.Parent, l.Template, data)
+		return g.execute(w, l.Parent, l.Template, data)
 	} else {
 		err = l.Execute(w, data)
 		if err != nil {
@@ -169,8 +190,8 @@ func execute(w io.Writer, layout string, t *template.Template, data interface{})
 	return nil
 }
 
-func executeHTML(w io.Writer, layout string, content template.HTML, data interface{}) error {
-	l, ok := dict[layout]
+func (g *Group) executeHTML(w io.Writer, layout string, content template.HTML, data interface{}) error {
+	l, ok := g.dict[layout]
 	if !ok {
 		return ErrMissingLayout
 	}
@@ -179,7 +200,7 @@ func executeHTML(w io.Writer, layout string, content template.HTML, data interfa
 		"content": makeContentFunc(content),
 	})
 	if l.Parent != "" {
-		return execute(w, l.Parent, l.Template, data)
+		return g.execute(w, l.Parent, l.Template, data)
 	} else {
 		err := l.Execute(w, data)
 		if err != nil {
@@ -190,31 +211,33 @@ func executeHTML(w io.Writer, layout string, content template.HTML, data interfa
 }
 
 // Execute renders the specified template using the named layout, passing in data to the layout templates.
-func Execute(w io.Writer, layout string, t *template.Template, data interface{}) error {
-	mu.Lock()
-	defer mu.Unlock()
+func (g *Group) Execute(w io.Writer, layout string, t *template.Template, data interface{}) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
 
-	return execute(w, layout, t, data)
+	return g.execute(w, layout, t, data)
 }
 
 // ExecuteHTML renders the content string using the named layout, passing in data to the layout templates. Note that the content string is of type template.HTML; it is expected that the content string is safe, fully-escaped HTML.
-func ExecuteHTML(w io.Writer, layout string, content template.HTML, data interface{}) error {
-	mu.Lock()
-	defer mu.Unlock()
+func (g *Group) ExecuteHTML(w io.Writer, layout string, content template.HTML, data interface{}) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
 
-	return executeHTML(w, layout, content, data)
+	return g.executeHTML(w, layout, content, data)
 }
 
-func Funcs(f template.FuncMap) {
-	if tmpls != nil {
-		for _, t := range tmpls.Templates() {
+// Funcs adds funcs to all templates that are executed. See template.Funcs in
+// html/template
+func (g *Group) Funcs(f template.FuncMap) {
+	if g.tmpls != nil {
+		for _, t := range g.tmpls.Templates() {
 			t.Funcs(f)
 		}
 	}
-	if funcs == nil {
-		funcs = template.FuncMap{}
+	if g.funcs == nil {
+		g.funcs = template.FuncMap{}
 	}
 	for k, v := range f {
-		funcs[k] = v
+		g.funcs[k] = v
 	}
 }

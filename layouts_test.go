@@ -9,8 +9,9 @@ import (
 )
 
 func TestTemplate(t *testing.T) {
-	Clear()
-	err := Glob("testdata/layouts/*.html")
+	g := New("testdata/layouts")
+	g.Clear()
+	err := g.Glob("*.html")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -30,7 +31,7 @@ func TestTemplate(t *testing.T) {
 	data := map[string]interface{}{
 		"page": matter,
 	}
-	err = Execute(buf, matter["layout"].(string), tmpl, data)
+	err = g.Execute(buf, matter["layout"].(string), tmpl, data)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,8 +51,9 @@ func TestTemplate(t *testing.T) {
 }
 
 func TestUserHTML(t *testing.T) {
-	Clear()
-	err := Glob("testdata/layouts/*.html")
+	g := New("testdata/layouts")
+	g.Clear()
+	err := g.Glob("*.html")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +68,7 @@ func TestUserHTML(t *testing.T) {
 	data := map[string]interface{}{
 		"page": matter,
 	}
-	err = ExecuteHTML(buf, matter["layout"].(string), template.HTML(content), data)
+	err = g.ExecuteHTML(buf, matter["layout"].(string), template.HTML(content), data)
 	if err != nil {
 		t.Fatal(err)
 	}
