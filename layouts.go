@@ -2,7 +2,7 @@ package layouts
 
 import (
 	"bytes"
-	"errors"
+	"fmt"
 	"html/template"
 	"io"
 	"io/ioutil"
@@ -103,8 +103,6 @@ func (g *Group) load(filename string) error {
 	return nil
 }
 
-var ErrMissingLayout = errors.New("layouts: missing layout")
-
 // Files loads layouts by individual file names. Each layout's name
 // comes from the file name without its extension.
 func (g *Group) Files(files ...string) error {
@@ -165,7 +163,7 @@ func (g *Group) Entries() []Entry {
 func (g *Group) execute(w io.Writer, layout string, t *template.Template, data interface{}) error {
 	l, ok := g.dict[layout]
 	if !ok {
-		return ErrMissingLayout
+		return fmt.Errorf(`layouts: missing layout "%s"`, layout)
 	}
 
 	buf := bytes.NewBuffer(make([]byte, 0, 1024))
@@ -197,7 +195,7 @@ func (g *Group) execute(w io.Writer, layout string, t *template.Template, data i
 func (g *Group) executeHTML(w io.Writer, layout string, content template.HTML, data interface{}) error {
 	l, ok := g.dict[layout]
 	if !ok {
-		return ErrMissingLayout
+		return fmt.Errorf(`layouts: missing layout "%s"`, layout)
 	}
 
 	l.Funcs(template.FuncMap{
