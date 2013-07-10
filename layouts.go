@@ -154,6 +154,8 @@ func (g *Group) Clear() {
 // Entries returns info about all loaded layouts.
 func (g *Group) Entries() []Entry {
 	list := make([]Entry, 0, len(g.dict))
+	g.mu.Lock()
+	defer g.mu.Unlock()
 	for _, e := range g.dict {
 		list = append(list, e)
 	}
@@ -232,10 +234,12 @@ func (g *Group) ExecuteHTML(w io.Writer, layout string, content template.HTML, d
 	return g.executeHTML(w, layout, content, data)
 }
 
-// Funcs adds funcs to all layouts that are loaded. See template.Funcs in
-// html/template. Note that any templates you pass in to Execute do not have
+// Funcs adds template funcs to all layouts that are loaded. See template.Funcs
+// in html/template. Note that any templates you pass in to Execute do not have
 // these funcs applied.
 func (g *Group) Funcs(f template.FuncMap) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
 	if g.tmpls != nil {
 		for _, t := range g.tmpls.Templates() {
 			t.Funcs(f)
