@@ -51,8 +51,9 @@ func ExecuteHTML(w io.Writer, layout string, content template.HTML, data interfa
 	return DefaultGroup.ExecuteHTML(w, layout, content, data)
 }
 
-// Funcs adds funcs to all templates that are executed. See
-// template.Funcs in html/template
+// Funcs adds funcs to all layouts that are loaded. See template.Funcs in
+// html/template. Note that any templates you pass in to Execute do not have
+// these funcs applied.
 func Funcs(f template.FuncMap) {
 	DefaultGroup.Funcs(f)
 }
