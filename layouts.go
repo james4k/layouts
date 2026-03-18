@@ -6,7 +6,7 @@ import (
 	"html/template"
 	"io"
 	"io/ioutil"
-	"j4k.co/fmatter"
+	"github.com/james4k/fmatter"
 	"path/filepath"
 	"sync"
 )

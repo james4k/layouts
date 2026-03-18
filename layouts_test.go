@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"html/template"
 	"io/ioutil"
-	"j4k.co/fmatter"
+	"github.com/james4k/fmatter"
 	"testing"
 )
 
